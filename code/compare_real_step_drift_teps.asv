@@ -1,0 +1,206 @@
+% Compare different filtering approaches
+
+%% Reset
+clear; close all; clc;
+
+% Load paths
+load('pathInfo.mat');
+
+% Load the absolute ground truth
+tep_gt_abs = load('ground_truth_tep.mat');
+
+% Time window for calculating RMSE
+tp1 = 10;
+tp2 = 50;
+
+%% Loop and plot RMSE
+
+% Approach names
+cleaningName = {'raw','demean','detrend','butter','butter_demean','butter_detrend','butter_modified_demean','butter_modified_detrend'};
+cleaningVar = {'Raw','Demean','Detrend','Butter','DemeanButter','DetrendButter','DemeanButterMod','DetrendButterMod'};
+
+cmap = brewermap(length(cleaningName),'Dark2');
+
+% Loop and save the rmse
+for cx = 1:length(cleaningName)
+
+    % Load the data
+    load(['real_filter_',cleaningName{cx},'.mat']);
+
+    % Save the output
+    rmseAll.(cleaningVar{cx}).rmse = rmse;
+    rmseAll.(cleaningVar{cx}).stepLevel = stepLevel;
+
+    % Data 
+    dataAll.(cleaningVar{cx}) = eegfilt;
+
+end
+
+%%
+% Find time point 0
+[~,t0] = min(abs(0-time));
+
+% Find time points 10 and 300
+[~,t10] = min(abs(tp1-time));
+[~,t300] = min(abs(tp2-time));
+
+% Find time points 10 and 300
+[~,tg10] = min(abs(tp1-tep_gt_abs.time*1000));
+[~,tg300] = min(abs(tp2-tep_gt_abs.time*1000));
+
+%%
+
+for cx = 1:length(cleaningName)
+    rmse = [];
+    for idx = 1:size(tep_gt,3)
+        for sx = 1:length(stepLevel)
+
+            % Calculate the RMS error
+            rmse(:,sx,idx) = sqrt(mean((tep_gt(:,tg10:tg300,idx) - dataAll.(cleaningVar{cx}).(['step',num2str(stepLevel(sx))])(:,t10:t300,idx)).^2,2));
+
+        end
+    end
+    rmseTEP.(cleaningVar{cx}).rmse = rmse;
+end
+
+%%
+
+fig1 = figure('color','w');
+
+% Loop and plot
+for cx = 1:length(cleaningVar)
+     
+    data = rmseTEP.(cleaningVar{cx}).rmse;
+    steps = rmseAll.(cleaningVar{cx}).stepLevel;
+
+    errMean = mean(data,3);
+    errSem = std(data, [], 3) / sqrt(size(data,3));
+
+    % Shaded area
+    fill([steps, fliplr(steps)], ...
+        [errMean - errSem, fliplr(errMean + errSem)], ...
+        cmap(cx,:), 'EdgeColor', 'none', 'FaceAlpha', 0.3); hold on;
+
+    % Mean line
+    plot(steps, errMean,'Color',cmap(cx,:), 'LineWidth', 1.5);
+
+
+end
+
+set(gca,'xlim',[-0.5,10.5],'tickdir','out','box','off');
+xlabel('Step artifact amplitude (\muV)');
+ylabel('Root mean square error (\muV)');
+
+%%
+
+fig2 = figure('color','w');
+set(gcf,'position',[20,20,1200,1000]);
+
+subplot(2,2,1)
+
+dataOut = [];
+for cx = 1:length(cleaningVar)
+     
+    data = rmseTEP.(cleaningVar{cx}).rmse;
+
+    dataOut(cx,:) = data(:,1,:);
+
+end
+
+errMean = mean(dataOut,2);
+errSem = std(dataOut, [], 2) / sqrt(size(dataOut,2));
+
+[~,i] = sort(errMean,'descend');
+errMean = errMean(i);
+errSem = errSem(i);
+
+cmapSet1 = brewermap(length(cleaningName),'Set1');
+
+% Mean line
+% plot(mean(dataOut,2),'.-','Color',cmap(cx,:), 'LineWidth', 1.5);
+% boxplot(dataOut', 'Labels', cleaningVar);
+errorbar(1:length(cleaningVar),errMean,errSem,'linestyle','none','color','k','linewidth',1.5);hold on; % 'o-' for circles at data points connected by lines
+bar(1:length(cleaningVar),errMean,'facecolor',cmapSet1(2,:),'linewidth',1.5);
+set(gca,'xlim',[0,length(cleaningVar)+1],'ylim',[0,16],'tickdir','out','box','off','linewidth',1.5,'fontsize',12,...
+    'xticklabel',cleaningVar(i),'xtick',1:length(cleaningVar),'XTickLabelRotation',45);
+
+ylabel('Root mean square error (\muV)');
+title('Step = 0 \muV');
+
+xlimits = get(gca,'xlim');
+ylimits = get(gca,'ylim');
+text(xlimits(1) - (xlimits(2)-xlimits(1))*0.1,ylimits(2)+(ylimits(2)-ylimits(1))*0.1,'A','FontSize',)
+
+subplot(2,2,2)
+
+dataOut = [];
+for cx = 1:length(cleaningVar)
+     
+    data = rmseTEP.(cleaningVar{cx}).rmse;
+
+    dataOut(cx,:) = data(:,6,:);
+
+end
+
+errMean = mean(dataOut,2);
+errSem = std(dataOut, [], 2) / sqrt(size(dataOut,2));
+
+[~,i] = sort(errMean,'descend');
+errMean = errMean(i);
+errSem = errSem(i);
+
+% Mean line
+% plot(mean(dataOut,2),'.-','Color',cmap(cx,:), 'LineWidth', 1.5);
+% boxplot(dataOut', 'Labels', cleaningVar);
+errorbar(1:length(cleaningVar),errMean,errSem,'linestyle','none','color','k','linewidth',1.5);hold on; % 'o-' for circles at data points connected by lines
+bar(1:length(cleaningVar),errMean,'facecolor',cmapSet1(2,:),'linewidth',1.5);
+set(gca,'xlim',[0,length(cleaningVar)+1],'ylim',[0,16],'tickdir','out','box','off','linewidth',1.5,'fontsize',12,...
+    'xticklabel',cleaningVar(i),'xtick',1:length(cleaningVar),'XTickLabelRotation',45);
+
+ylabel('Root mean square error (\muV)');
+title('Step = 10 \muV');
+
+subplot(2,2,3)
+errMean = mean(dataAll.Raw.step0,3);
+errSem = std(dataAll.Raw.step0, [], 3) / sqrt(size(dataAll.Raw.step0,3));
+h1 = plot(time,errMean,'Color',cmap(1,:), 'LineWidth', 1.5); hold on;
+fill([time, fliplr(time)], ...
+    [errMean - errSem, fliplr(errMean + errSem)], ...
+    cmap(1,:), 'EdgeColor', 'none', 'FaceAlpha', 0.3); hold on;
+
+errMean = mean(dataAll.DetrendButterMod.step0,3);
+errSem = std(dataAll.DetrendButterMod.step0, [], 3) / sqrt(size(dataAll.DetrendButterMod.step0,3));
+h2 = plot(time,errMean,'Color',cmap(2,:), 'LineWidth', 1.5); hold on;
+fill([time, fliplr(time)], ...
+    [errMean - errSem, fliplr(errMean + errSem)], ...
+    cmap(2,:), 'EdgeColor', 'none', 'FaceAlpha', 0.3); hold on;
+
+h3 = plot(tep_gt_abs.time*1000,tep_gt_abs.tep_gt,'k','LineWidth',1.5);
+set(gca,'xlim',[-100,300],'ylim',[-18,18],'box','off','tickdir','out','linewidth',1.5,'fontsize',12);
+
+xlabel('Time (ms)');
+ylabel('Amplitude (\muV)');
+legend([h1,h2,h3],'Raw','Detrend + ButterMod','Ground truth','location','northeast','box','off');
+title('Simulated TEPs (step = 0 \muV)');
+
+subplot(2,2,4)
+errMean = mean(dataAll.Raw.step10,3);
+errSem = std(dataAll.Raw.step10, [], 3) / sqrt(size(dataAll.Raw.step10,3));
+h1 = plot(time,errMean,'Color',cmap(1,:), 'LineWidth', 1.5); hold on;
+fill([time, fliplr(time)], ...
+    [errMean - errSem, fliplr(errMean + errSem)], ...
+    cmap(1,:), 'EdgeColor', 'none', 'FaceAlpha', 0.3); hold on;
+
+errMean = mean(dataAll.DetrendButterMod.step10,3);
+errSem = std(dataAll.DetrendButterMod.step10, [], 3) / sqrt(size(dataAll.DetrendButterMod.step10,3));
+h2 = plot(time,errMean,'Color',cmap(2,:), 'LineWidth', 1.5); hold on;
+fill([time, fliplr(time)], ...
+    [errMean - errSem, fliplr(errMean + errSem)], ...
+    cmap(2,:), 'EdgeColor', 'none', 'FaceAlpha', 0.3); hold on;
+
+plot(tep_gt_abs.time*1000,tep_gt_abs.tep_gt,'k','LineWidth',1.5);
+set(gca,'xlim',[-100,300],'ylim',[-18,18],'box','off','tickdir','out','linewidth',1.5,'fontsize',12);
+
+xlabel('Time (ms)');
+ylabel('Amplitude (\muV)');
+title('Simulated TEPs (step = 10 \muV)');

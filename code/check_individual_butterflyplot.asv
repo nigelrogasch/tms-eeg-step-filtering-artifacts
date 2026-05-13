@@ -1,0 +1,142 @@
+%% Settings
+
+clear; close all; clc;
+
+% Load paths
+load('pathInfo.mat');
+
+% Path to individual data
+pathDataInd = 'R:\Low_Cost_Storage\healthsciences\SPRH\NeuroPAD\LAB_temporary\Merrick_temp\TMSEEG_DS\analysis\line_offset_check\TMSEEG_senstim\';
+
+%% Butterfly plot
+
+% Individual to plot
+id = 'P004';
+
+% Load the data
+fileName = [id, '_optimal_120_custom_no_artefact_removed.set'];
+EEG = pop_loadset('filename',fileName,'filepath',pathDataInd);
+
+% Plot the figure
+fig = figure('color','w');
+set(gcf,'Position',[100,100,900,650]);
+
+% Colours
+cb = brewermap(4,'GnBu');
+
+% Butterfly plot
+plot(EEG.times,mean(EEG.data,3),'k');hold on;
+chan = 'F1';
+labels = {EEG.chanlocs.labels}';
+chani = find(strcmp(labels,chan));
+plot(EEG.times,mean(EEG.data(chani,:,:),3),'r','linewidth',1.5);
+plot([0,0],[-100,100],'--','color',[0.8,0.8,0.8],'linewidth',1.5);
+set(gca,'ylim',[-40,40],'tickdir','out','box','off','linewidth',1.5,'fontsize',12);
+xlabel('Time (ms)');
+ylabel('Amplitude (\muV)');
+title('Butterfly plot of raw TEP');
+
+%%
+
+% Load the absolute ground truth
+gt = load('ground_truth_tep.mat');
+
+data = mean(EEG.data(chani,:,:),3);
+time = EEG.times;
+
+% Parameters
+b = 2.6;    % example value
+k = 0;    % example value
+x = 1;    % example value
+
+% Range of F
+F = 0:999;
+
+L_10 = b - log10(k + F.^x);  % original formula with log base 10
+Y_10 = 10.^(b - L_10);       % log-free form: Y = 10^(b - L) = k + F^x
+AP = (10.^b) ./ (F.^x);
+
+mix
+
+close all;
+figure;
+plot(time,data.*-1,'k');hold on;
+plot(gt.time*1000,gt.tep_gt*-1,'r');
+plot(F,AP,'b');
+set(gca,'ylim',[-20,20]);
+
+%%
+
+% Extract data to fit
+t1 = 10;
+t2 = 999;
+[~,tp1] = min(abs(t1-time));
+[~,tp2] = min(abs(t2-time));
+
+% Example data (replace with your own)
+F_data = [t1:t2]';            % predictor variable
+AP_data = data(tp1:tp2)';
+AP_data = AP_data.*-1;
+
+% Define model: AP(F) = 10^b / (k + F^x)
+modelFun = @(params,F) (10.^params(1)) ./ (F.^params(2));
+
+% Initial guesses for [b, k, x]
+initGuess = [1, 2];
+
+% Fit using nonlinear least squares
+betaHat = nlinfit(F_data, AP_data, modelFun, initGuess);
+
+% Display results
+fprintf('Fitted parameters:\n');
+fprintf('b = %.4f\n', betaHat(1));
+fprintf('k = %.4f\n', betaHat(2));
+fprintf('x = %.4f\n', betaHat(3));
+
+% Plot fit vs data
+F_fit = linspace(min(F_data), max(F_data), 200);
+AP_fit = modelFun(betaHat, F_fit);
+
+figure;
+scatter(F_data, AP_data, 'bo'); hold on;
+plot(F_fit, AP_fit, 'r-', 'LineWidth', 2);
+xlabel('F');
+ylabel('AP(F)');
+title('Nonlinear Fit of AP(F) = 10^b / (k + F^x)');
+legend('Data','Fit');
+grid on;
+
+%%
+
+% Example data (replace with your own)
+F_data = linspace(0,10,50)';            % predictor variable
+AP_data = (10^2)./(1 + F_data.^3) ...   % true model (b=2, k=1, x=3)
+          + 0.05*randn(size(F_data));   % add some noise
+
+% Define model: AP(F) = 10^b / (k + F^x)
+modelFun = @(params,F) (10.^params(1)) ./ (params(2) + F.^params(3));
+
+% Initial guesses for [b, k, x]
+initGuess = [1, 1, 2];
+
+% Fit using nonlinear least squares
+betaHat = nlinfit(F_data, AP_data, modelFun, initGuess);
+
+% Display results
+fprintf('Fitted parameters:\n');
+fprintf('b = %.4f\n', betaHat(1));
+fprintf('k = %.4f\n', betaHat(2));
+fprintf('x = %.4f\n', betaHat(3));
+
+% Plot fit vs data
+F_fit = linspace(min(F_data), max(F_data), 200);
+AP_fit = modelFun(betaHat, F_fit);
+
+figure;
+scatter(F_data, AP_data, 'bo'); hold on;
+plot(F_fit, AP_fit, 'r-', 'LineWidth', 2);
+xlabel('F');
+ylabel('AP(F)');
+title('Nonlinear Fit of AP(F) = 10^b / (k + F^x)');
+legend('Data','Fit');
+grid on;
