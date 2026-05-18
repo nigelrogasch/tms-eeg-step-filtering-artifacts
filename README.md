@@ -9,7 +9,7 @@ Marissa M. Holden, Mitchell R. Goldsworthy, Wei-Yeh Liao, Scott R. Clark, Christ
 
 **Paper:** TBA
 
-**Preprint:** TBA
+**Preprint:** doi: [https://doi.org/10.64898/2026.05.13.725016](https://doi.org/10.64898/2026.05.13.725016)
 
 ## Repository layout
 - `code/` includes all of the code used to run the analyses and generate the figures. Note that dependency toolbox folders need to be included here.
@@ -23,7 +23,7 @@ Marissa M. Holden, Mitchell R. Goldsworthy, Wei-Yeh Liao, Scott R. Clark, Christ
 Analysis was run on MATLAB R2025b. Additional MATLAB toolboxes may be required.
 
 Other toolboxes used include:
-- [EEGLAB]() - 2023.0
+- [EEGLAB](https://sccn.ucsd.edu/eeglab/) - 2023.0
 - [Fieldtrip](https://www.fieldtriptoolbox.org/) - 20250114
 - [BrewerMap](https://github.com/DrosteEffect/BrewerMap/releases/tag/3.2.5) - 3.2.5
 - [MatPlotLib](https://au.mathworks.com/matlabcentral/fileexchange/62729-matplotlib-perceptually-uniform-colormaps) - 2.1.9
