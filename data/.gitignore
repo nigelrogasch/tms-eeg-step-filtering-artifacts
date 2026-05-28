@@ -2,6 +2,6 @@
 *
 # Except this file and the extras directory
 !.gitignore
-!.neighbours_tepopt.mat
+!neighbours_tepopt.mat
 !/extras/
 !extras/*
